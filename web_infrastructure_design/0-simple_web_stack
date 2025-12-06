@@ -1,0 +1,134 @@
+Infrastructure Diagram
+-----
+graph TD
+    User((User)) -- HTTP Request --> Internet
+    Internet -- www.foobar.com resolves to 8.8.8.8 --> Server
+    
+    subgraph Server [Server (IP: 8.8.8.8)]
+        Nginx[Web Server (Nginx)]
+        AppServer[Application Server]
+        AppFiles[Application Files (Code Base)]
+        DB[(Database (MySQL))]
+        
+        Nginx -- Forwards Dynamic Requests --> AppServer
+        Nginx -- Serves Static Files --> AppFiles
+        AppServer -- Reads Code --> AppFiles
+        AppServer -- Queries/Updates --> DB
+    end
+-----
+Specifics of the Infrastructure
+User Access Journey
+A user opens their web browser and types www.foobar.com
+
+The browser queries the Domain Name System (DNS) to find the IP address associated with www.foobar.com
+
+DNS returns the IP address 8.8.8.8.
+
+The user's browser sends an HTTP request to the server at 8.8.8.8.
+
+The Web Server (Nginx) receives the request.
+
+If it' a static file (HTML, CSS, JS, images), Nginx serves it directly.
+
+If it's dynamic content, Nginx forwards it to the Application Server.
+
+The Application Server executes the business logic, using the Application Files and
+interacting with the MySQL database when necessary.
+
+The response is sent back through Nginx to the user's browser.
+
+-----
+Core Concepts
+What is a Server?
+
+A server is a physical or virtual computer that receives requests from clients (like users'  browsers) and
+provides responses such as web pages, data, or services. In this infrastructure, the single server hosts the entire web stack.
+
+.
+
+Role of the Domain Name
+
+The domain name foobar.com provides a human-readable way to access the website.
+Instead of typing the server's IP address (8.8.8.8), users can simply type www.foobar.com
+
+.
+
+DNS Record Type for www ?
+
+The www in www.foobar.com
+
+is an A Record (Address Record).
+This type of DNS record maps a hostname to an IPv4 address -  in this case, 8.8.8.8.
+
+-----
+Roles of the Components
+Role of the Web Server (Nginx)
+
+Accepts incoming HTTP/HTTPS requests.
+
+Serves static assets quickly.
+
+For dynamic requests, forwards them to the application server.
+
+Acts as the front door of the website.
+
+Role of the Application Server
+
+Runs the server-side code.
+
+Processes user inputs and handles business logic.
+
+Retrieves or updates data in the database.
+
+Generates dynamic content.
+
+Role of the Application Files
+
+The website's actual code base.
+
+Contains HTML templates, server-side logic, API endpoints, and configuration files.
+
+Role of the Database (MySQL)
+
+Stores persistent, structured data.
+
+Allows the application to store and retrieve information such as user accounts, products, posts, etc.
+
+-----
+Communication Protocol
+
+The server communicates with the user's computer using:
+
+HTTP/HTTPS for web communication
+
+TCP/IP as the underlying network protocol stack
+
+This ensures reliable delivery of web content from server to client.
+
+------
+Issues with This Infrastructure
+1. Single Point of Failure (SPOF)
+
+All components (web server, application server, application files, and database) run on a single machine.
+If the server fails, the entire website becomes unavailable. No redundancy exists.
+
+2. Downtime During Maintenance
+
+Deploying new code
+
+Updating Nginx
+
+Restarting the app server
+
+Performing OS updates
+All require restarting services. Since there's only one server, any restart causes complete downtime.
+
+3. Scalability Issues
+
+The system cannot handle large amounts of incoming traffic because:
+
+CPU, RAM, disk, and network resources are limited to one machine.
+
+There is no load balancing or ability to add more servers.
+
+It can only scale vertically (upgrading hardware), which has limits.
