@@ -1,0 +1,115 @@
+1. Distributed Web Infrastructure
+
+Infrastructure Diagram
+
+graph TD
+    User((User)) -- HTTP/HTTPS Request --> LB[Load Balancer (HAProxy)]
+
+    LB -- Distributes Traffic --> Web1[Web/App Server 1]
+    LB -- Distributes Traffic --> Web2[Web/App Server 2]
+
+    subgraph Server_1 [Server 1]
+        Nginx1[Web Server (Nginx)]
+        App1[Application Server]
+        Code1[Application Files]
+        DB1[(MySQL Primary Database)]
+    end
+
+    subgraph Server_2 [Server 2]
+        Nginx2[Web Server (Nginx)]
+        App2[Application Server]
+        Code2[Application Files]
+        DB2[(MySQL Replica Database)]
+    end
+
+    Nginx1 --> App1
+    App1 -- Queries/Updates --> DB1
+
+    Nginx2 --> App2
+    App2 -- Queries(Read) --> DB2
+
+    DB1 -- Replicates Data --> DB2
+
+
+Why Each Component Was Added
+
+1. Load Balancer (HAProxy)
+- Distributes incoming requests between two servers.
+- Prevents any single server from being overwhelmed.
+- If one server fails, traffic is routed to the other.
+
+2. Two Web/Application Servers
+Each server hosts:
+- Nginx (web server)
+- Application server
+- Application files (code base)
+- MySQL database instance
+
+Why:
+- Provides redundancy: if one server goes down, the other still works.
+- Allows higher traffic capacity by splitting load.
+- Improves reliability and performance.
+
+3. Primary-Replica Database Setup
+- Ensures data redundancy.
+- Replica offloads read requests, improving performance.
+- Protects data by having multiple copies.
+
+
+Load Balancer Details
+
+Distribution Algorithm Used: Round Robin
+
+How It Works:
+- The load balancer sends each new request to the next server in order.
+- Example: Request 1 ->  Server 1, Request 2 ->  Server 2, Request 3 ->  Server 1, etc.
+- Ensures equal traffic distribution.
+
+Active-Active vs Active-Passive
+
+Active-Active (Used Here)
+- Both servers actively process requests at the same time.
+- Load balancer splits user traffic between them.
+- Better performance and uptime.
+
+Active-Passive (Not Used Here)
+- Only one server handles all traffic.
+- The second server waits in standby mode.
+- Takes over only if the active server fails.
+- Less efficient and wastes resources.
+
+
+Primary - Replica Database Cluster
+
+How It Works:
+- Primary database handles all write operations.
+- Replica database receives a continuous copy of all changes via replication.
+- Application writes go to the Primary; read requests can be served by the Replica.
+
+Primary Node:
+- Handles INSERT, UPDATE, DELETE.
+- Source of truth for the data.
+
+Replica Node:
+- Read-only.
+- Used for SELECT queries.
+- Helps reduce load on the Primary.
+
+
+Issues With This Infrastructure
+
+1. Single Points of Failure (SPOF)
+- The load balancer is a SPOF. If it fails, no traffic reaches any server.
+- The Primary database is a SPOF. If it fails, the system cannot handle any writes.
+- Application files are duplicated manually on each server -  no automatic synchronization.
+
+2. Security Issues
+- No firewall to restrict inbound/outbound traffic.
+- No HTTPS, so data travels unencrypted and vulnerable to interception.
+- Databases are not isolated; they are exposed to potential attacks.
+
+3. No Monitoring
+- No monitoring tools like Nagios, Zabbix, Prometheus, or Datadog.
+- Cannot detect server overload, downtime, replication lag, load balancer failure, etc.
+- No alerting system to notify administrators of critical issues.
+
