@@ -1,0 +1,134 @@
+2. Secured and Monitored Web Infrastructure
+
+Infrastructure Diagram
+
+graph TD
+    User((User)) -- HTTPS Request --> FW1[Firewall #1]
+    FW1 -- Forwards Allowed Traffic --> LB[Load Balancer (HAProxy with SSL Termination)]
+
+    LB -- HTTPS/HTTP --> FW2[Firewall #2]
+    FW2 -- Routes Traffic --> Web1[Web/App Server 1]
+    FW2 -- Routes Traffic --> Web2[Web/App Server 2]
+
+    subgraph Server_1 [Server 1]
+        Nginx1[Web Server (Nginx)]
+        App1[Application Server]
+        Code1[Application Files]
+        DB1[(MySQL Primary Database)]
+        Mon1[Monitoring Agent]
+    end
+
+    subgraph Server_2 [Server 2]
+        Nginx2[Web Server (Nginx)]
+        App2[Application Server]
+        Code2[Application Files]
+        DB2[(MySQL Replica Database)]
+        Mon2[Monitoring Agent]
+    end
+
+    subgraph LB_Server [Load Balancer Server]
+        Cert[SSL Certificate for HTTPS]
+        Mon3[Monitoring Agent]
+    end
+
+    FW3[Firewall #3] -. Protects DB Layer .-> DB1
+    FW3 -. Protects DB Layer .-> DB2
+
+    App1 -- Writes/Reads --> DB1
+    App2 -- Reads --> DB2
+    DB1 -- Replication --> DB2
+
+
+Why Each New Component Was Added
+
+1. Firewalls (3 Total)
+- Firewall #1: Protects the public entrypoint before reaching the load balancer.
+- Firewall #2: Protects the web/application servers from unwanted traffic.
+- Firewall #3: Protects the database layer by restricting traffic to web/app servers only.
+Why added:
+Firewalls prevent unauthorized access, block malicious requests, and filter traffic based on rules.
+
+2. SSL Certificate
+The SSL certificate added to the load balancer allows HTTPS.
+Why added:
+- Encrypts data between users and the load balancer.
+- Prevents eavesdropping and MITM attacks.
+- Ensures authenticity and trust for www.foobar.com.
+
+3. Monitoring Clients (3 Clients)
+One monitoring agent is installed on:
+- The load balancer
+- Server 1
+- Server 2
+Why added:
+Monitoring agents collect metrics (CPU, RAM, QPS, logs, events) and
+ send data to a central monitoring service like SumoLogic, Datadog, or Prometheus.
+
+
+Firewalls -  What They Are For
+
+Firewalls filter network traffic.  
+They:
+- Allow only permitted ports/services.
+- Block unauthorized access.
+- Protect infrastructure from attacks such as port scans, brute force, and injection attempts.
+
+
+Why Traffic Is Served Over HTTPS
+
+- HTTPS encrypts all communication between the user and the server.
+- Prevents data theft or interception.
+- Protects passwords, cookies, and personal data.
+- Confirms the identity of the website (authentication).
+
+Serving a website without HTTPS is insecure because anyone on the network can read or tamper with data.
+
+
+Monitoring -  Purpose and Data Collection
+
+Monitoring is used to:
+- Track system health (CPU, memory, disk, network).
+- Track service health (web server uptime, database latency).
+- Detect anomalies and failures.
+- Alert administrators automatically.
+
+How Monitoring Tools Collect Data:
+- A monitoring agent runs on each server.
+- It collects logs, metrics, and system data at intervals.
+- Data is sent to a central monitoring platform (Sumologic, Datadog, Prometheus, etc.).
+- Dashboards and alerts are configured from this data.
+
+How to Monitor Web Server QPS (Queries Per Second):
+- Configure the monitoring tool to scrape or read Nginx access logs.
+- Count how many requests hit the server per second.
+- Export the metric as ârequests_per_secondâ or QPS.
+- Create charts and alerts when QPS exceeds thresholds.
+
+
+Issues With This Infrastructure
+
+1. SSL Termination at the Load Balancer
+Issue:
+- Traffic is decrypted at the load balancer, then forwarded to servers in plain HTTP.
+Why this is bad:
+- Traffic inside the network is no longer encrypted.
+- If the internal network is compromised, attackers can read the data.
+- Better practice is âend-to-end encryption  where back-end servers also use HTTPS.
+
+2. Only One MySQL Server Accepting Writes
+Issue:
+- The Primary is the only writable database.
+- If it fails, the entire system cannot process writes.
+- The Replica cannot immediately take over unless failover is configured.
+- This creates a Single Point of Failure (SPOF).
+
+3. All Servers Have the Same Components
+Issue:
+- Both servers run the same: web server, application server, and database.
+Problems:
+- Complexity: each server must maintain its own identical stack.
+- Synchronization: application files must be duplicated, increasing the risk of inconsistency.
+- Security: more exposed services increase attack surface.
+- Scaling: tying all components together makes scaling individual layers impossible.
+
+
