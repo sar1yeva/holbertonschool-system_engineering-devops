@@ -1,0 +1,72 @@
+3. Scale Up
+
+Infrastructure Diagram
+
+graph TD
+    User((User)) --> LBCluster[HAProxy Load Balancer Cluster (2 Nodes)]
+    LBCluster --> WebServer[Dedicated Web Server (Nginx)]
+    WebServer --> AppServer[Dedicated Application Server]
+    AppServer --> DBServer[(Dedicated MySQL Database Server)]
+    LBCluster --> NewLB[Additional HAProxy Node (Clustered)]
+
+    subgraph LB_Nodes [Load Balancer Cluster]
+        LB1[HAProxy Load Balancer #1]
+        LB2[HAProxy Load Balancer #2]
+    end
+
+    LB1 <--> LB2
+
+
+Why Each Component Was Added
+
+1. Additional Server
+A new server was added to split the roles of the infrastructure:
+- Web server runs separately.
+- Application server runs independently.
+- Database sits on its own server.
+Why this was added:
+- Improves reliability by isolating failures. 
+- Allows each component to scale independently.
+- Reduces resource contention (CPU, RAM, disk).
+- Makes the system more modular and maintainable.
+
+2. Load Balancer Cluster (Two HAProxy Instances)
+Another HAProxy load balancer was added and configured to form a cluster with the existing load balancer.
+Why added:
+- Removes the load balancer as a Single Point of Failure.
+- If LB1 fails, LB2 takes over and continues serving traffic.
+- Provides high availability and uninterrupted service.
+
+Clustering ensures:
+- Shared virtual IP (VIP)
+- Automatic failover through keepalived/VRRP
+- Continuous service even during maintenance or failures
+
+3. Split Components into Dedicated Servers
+The infrastructure was redesigned so each component runs on its own server:
+- One server dedicated to the Nginx web server.
+- One server dedicated to the application server.
+- One server dedicated to the MySQL database.
+
+Why added:
+- Scaling becomes easier: you can add more web servers without changing the app or DB layer.
+- Better performance: each component uses dedicated resources.
+- More security: the database is isolated from the public-facing services.
+- Easier debugging: issues can be traced to a specific component layer.
+
+
+Additional Notes
+
+Application Server vs Web Server
+- Web Server (Nginx):
+  - Handles and serves static files (HTML, CSS, JS, images).
+  - Processes incoming HTTP/HTTPS requests.
+  - Passes dynamic requests to the application server.
+
+- Application Server:
+  - Runs backend logic.
+  - Executes the application's  code.
+  - Handles dynamic content and interacts with the database.
+  - Returns processed data to the web server.
+
+Splitting these roles into separate servers improves performance and makes scaling straightforward.
